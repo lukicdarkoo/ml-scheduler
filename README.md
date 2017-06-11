@@ -8,7 +8,10 @@ Make sure that you have installed Python & pip:
 ```python setup.py install```
 
 ## Run
-```python src/App.py```
+```python mlscheduler```
+
+## Testing
+```python -m unittest test.TaskTest```
 
 ## Usefull links
 - Trello board (https://trello.com/b/WlySl9JH/bsc)

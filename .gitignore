@@ -1,3 +1,5 @@
 ai_scheduler.egg-info
+ml_scheduler.egg-info
 build
 dist
+.idea
