@@ -1,0 +1,13 @@
+class Fitness(object):
+    @staticmethod
+    def __find_roots(graph):
+        return [n for n, d in graph.in_degree().items() if d == 0]
+
+    @staticmethod
+    def __calculate_length(graph, node):
+        graph.successors(node)
+
+    @staticmethod
+    def calculate(graph):
+        print('Test')
+
