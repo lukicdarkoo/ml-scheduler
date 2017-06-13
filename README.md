@@ -1,9 +1,9 @@
 # Task Scheduler based on Machine Learning
 
 ## Installation
-Make sure that you have installed Python & pip:
-- Arch `pacman -S python pip`
-- Debian `apt-get install python pip`
+Make sure that you have installed Python & pip:  
+- Arch `pacman -S python pip`  
+- Debian `apt-get install python pip`  
 
 Install project dependencies  
 ```python setup.py install```
