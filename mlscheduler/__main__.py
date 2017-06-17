@@ -1,4 +1,4 @@
-from mlscheduler.usecases.BasicUseCase import BasicUseCase
+from usecases.BasicUseCase import BasicUseCase
 
 
 if __name__ == '__main__':

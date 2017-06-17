@@ -1,5 +1,5 @@
-from mlscheduler.importers.RandomImporter import RandomImporter
-from mlscheduler.importers.PredefinedImporter import PredefinedImporter
+from importers.RandomImporter import RandomImporter
+from importers.PredefinedImporter import PredefinedImporter
 
 
 class BasicUseCase(object):
@@ -7,7 +7,8 @@ class BasicUseCase(object):
     def run():
         print("Running Basic use case")
 
-        chromosome = [1, 2, 3, 2, 3, 1, 3, 1]
+        # chromosome = [1, 2, 3, 2, 3, 1, 3, 1]
+        chromosome = [1, 2, 3, 3, 3, 2, 1, 2]
         task_graph = PredefinedImporter.get_task_graph()
         task_graph.set_schedule(chromosome)
 
@@ -18,7 +19,7 @@ class BasicUseCase(object):
         print('Total Time:', total_time)
         print('Total Cost:', total_cost)
 
-        task_graph.print_scheduled_tasks()
-        task_graph.draw_graph()
+        task_graph.print_schedule()
+        # task_graph.draw_graph()
         task_graph.draw_schedule()
 

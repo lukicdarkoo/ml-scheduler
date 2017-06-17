@@ -1,6 +1,10 @@
 import networkx as nx
-from mlscheduler.misc.Task import Task
-from mlscheduler.misc.TaskGraph import TaskGraph
+from misc.Task import Task
+from misc.TaskGraph import TaskGraph
+
+"""
+Module provides data given in "Cost-Effective Scheduling Precedence Constrained Tasks in Cloud Computing"
+"""
 
 
 class PredefinedImporter(object):
