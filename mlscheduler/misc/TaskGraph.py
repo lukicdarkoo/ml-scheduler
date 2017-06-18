@@ -5,28 +5,13 @@ import matplotlib.patches as patches
 
 
 class TaskGraph(object):
-    def __init__(self, tasks, graph, etc, vm_base=0.1):
+    def __init__(self, tasks, graph, etc, processors, vm_base=0.1):
         self._tasks = tasks                 # List of tasks
         self._graph = graph                 # DAG that represents dependencies between tasks
         self._etc = etc                     # Expect Time to Complete
-        self._tasks_per_processor = []      # Scheduled tasks per processor
         self._n_processors = len(etc[0])    # Number of processors
         self._vm_base = vm_base
-
-    """
-    Returns number of tasks scheduled to the specific processor
-    """
-    def _get_n_tasks(self, processor):
-        return len(self._tasks_per_processor[processor])
-
-    """
-    Returns last task scheduled to the specific processor
-    """
-    def _get_last_task(self, processor):
-        n_tasks = self._get_n_tasks(processor)
-        if n_tasks > 0:
-            return self._tasks_per_processor[processor][n_tasks - 1]
-        return None
+        self._processors = processors       # Scheduled tasks per processor
 
     """
     Returns exit task. It is used simplified DAG which has only one exit task.
@@ -46,13 +31,13 @@ class TaskGraph(object):
     Returns ETC value (Expected Time to Complete) for given task
     """
     def _get_etc(self, task):
-        return self._etc[task.index][task.processor]
+        return self._etc[task.index][task.processor.index]
 
     """
     Execution completion time of last task allocated to the processor
     """
     def _get_ava(self, processor):
-        last_task = self._get_last_task(processor)
+        last_task = processor.get_last_task()
         if last_task is not None:
             return last_task.ft
         return 0
@@ -97,11 +82,11 @@ class TaskGraph(object):
     """
     def get_total_time(self):
         exit_task = self._get_exit_task()
-        exit_task.processor = 0
+        exit_task.processor = self._processors[0]
 
         total_time = self._get_ft(exit_task)
-        for processor_index in range(1, self._n_processors):
-            exit_task.processor = processor_index
+        for processor in self._processors:
+            exit_task.processor = processor
             temp_total_time = self._get_ft(exit_task)
 
             if temp_total_time < total_time:
@@ -115,7 +100,7 @@ class TaskGraph(object):
     """
     def _get_vm_cost(self, processor):
         # TODO: "R_base denotes the speed ratio between them", between what?
-        return self._vm_base * exp(2)
+        return self._vm_base * exp(processor.capacity)
 
     """
     Calculates the monetary cost for executing task v_j on processor p_i
@@ -139,13 +124,11 @@ class TaskGraph(object):
     Clear previous configuration
     """
     def clear(self):
-        #
         for task in self._tasks:
             task.processed = False
 
-        self._tasks_per_processor.clear()
-        for i in range(self._n_processors):
-            self._tasks_per_processor.append([])
+        for processor in self._processors:
+            processor.clear()
 
     """
     Calculate start & finish times
@@ -154,7 +137,7 @@ class TaskGraph(object):
         self._tasks[0].st = 0
         self._tasks[0].ft = self._get_ft(self._tasks[0])
         self._tasks[0].processed = True
-        self._tasks_per_processor[self._tasks[0].processor].append(self._tasks[0])
+        self._tasks[0].processor.add_task(self._tasks[0])
         successors = self._graph.successors(self._tasks[0])
         while len(successors) > 1:
             # Process successors
@@ -162,7 +145,7 @@ class TaskGraph(object):
                 successor.st = self._get_st(successor)
                 successor.ft = self._get_ft(successor)
                 successor.processed = True
-                self._tasks_per_processor[successor.processor].append(successor)
+                successor.processor.add_task(successor)
 
             # Find all successors level above
             successors_of_successors = []
@@ -182,14 +165,15 @@ class TaskGraph(object):
         self.clear()
 
         # Schedule first task
-        first_processor = self._etc[0].index(min(self._etc[0]))
+        first_processor_index = self._etc[0].index(min(self._etc[0]))
+        first_processor = self._processors[first_processor_index]
         self._tasks[0].processor = first_processor
 
         # Schedule other tasks
         task_index = 1
         for processor_number in schedule:
             processor_index = processor_number - 1
-            self._tasks[task_index].processor = processor_index
+            self._tasks[task_index].processor = self._processors[processor_index]
             task_index += 1
 
         self.calculate_st_ft()
@@ -208,8 +192,8 @@ class TaskGraph(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        for processor_index in range(len(self._tasks_per_processor)):
-            for task in self._tasks_per_processor[processor_index]:
+        for processor_index in range(self._n_processors):
+            for task in self._processors[processor_index].tasks:
                 left_offset = processor_index * 1.0
                 rectangle = patches.Rectangle((left_offset, task.st),  0.9,  task.ft - task.st,
                                               alpha=0.2, edgecolor="#000000")
@@ -228,8 +212,8 @@ class TaskGraph(object):
     Print scheduled tasks
     """
     def print_schedule(self):
-        for processor in self._tasks_per_processor:
+        for processor in self._processors:
             tasks_str = ''
-            for task in processor:
+            for task in processor.tasks:
                 tasks_str += 'v' + str(task.index + 1) + ' (' + str(task.st) + ' - ' + str(task.ft) + '), '
-            print('Processor #' + str(self._tasks_per_processor.index(processor) + 1) + ': ' + tasks_str)
+            print('Processor #' + str(self._processors.index(processor) + 1) + ': ' + tasks_str)

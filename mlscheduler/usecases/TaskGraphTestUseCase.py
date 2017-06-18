@@ -2,7 +2,7 @@ from importers.RandomImporter import RandomImporter
 from importers.PredefinedImporter import PredefinedImporter
 
 
-class BasicUseCase(object):
+class TaskGraphTestUseCase(object):
     @staticmethod
     def run():
         print("Running Basic use case")

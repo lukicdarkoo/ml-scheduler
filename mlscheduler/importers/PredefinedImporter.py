@@ -1,6 +1,7 @@
 import networkx as nx
 from misc.Task import Task
 from misc.TaskGraph import TaskGraph
+from misc.Processor import Processor
 
 """
 Module provides data given in "Cost-Effective Scheduling Precedence Constrained Tasks in Cloud Computing"
@@ -60,5 +61,12 @@ class PredefinedImporter(object):
             [21, 7, 16]
         ]
 
-        return TaskGraph(graph=graph, tasks=tasks, etc=etc)
+        # Generate processors
+        processors = [
+            Processor(capacity=0.1, index=0),
+            Processor(capacity=0.2, index=1),
+            Processor(capacity=0.3, index=2)
+        ]
+
+        return TaskGraph(graph=graph, tasks=tasks, etc=etc, processors=processors)
 
