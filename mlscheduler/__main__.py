@@ -1,9 +1,13 @@
-from usecases.TaskGraphTestUseCase import TaskGraphTestUseCase
-from usecases.GASchedulerTestUseCase import GASchedulerTestUseCase
+import importlib
+import argparse
 
 
 if __name__ == '__main__':
-    print('Task Schedulers based on Machine Learning')
-    print('=========================================')
-    # TaskGraphTestUseCase.run()
-    GASchedulerTestUseCase.run()
+    parser = argparse.ArgumentParser(description='Task Scheduling Algorithms based on Machine Learning')
+    parser.add_argument('--usecase', metavar='U', default='GASchedulerTestUseCase',
+                        help='use case from folder `usecases`')
+    args = parser.parse_args()
+
+    UseCasePacket = importlib.import_module('usecases.' + args.usecase)
+    usecase = getattr(UseCasePacket, args.usecase)
+    usecase.run()

@@ -9,7 +9,9 @@ Install project dependencies
 ```python setup.py install```
 
 ## Run
-```python mlscheduler```
+```python mlscheduler```  
+or you can run different use case, eg.:  
+```python mlscheduler --usecase TaskGraphTestUseCase```
 
 ## Testing
 ```python -m unittest test.TaskTest```
