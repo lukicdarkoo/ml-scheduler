@@ -5,7 +5,8 @@ from importers.PredefinedImporter import PredefinedImporter
 class TaskGraphTestUseCase(object):
     @staticmethod
     def run():
-        print("Running Basic use case")
+        print("Running: " + TaskGraphTestUseCase.__name__)
+        print("-----------------------------------------")
 
         # chromosome = [1, 2, 3, 2, 3, 1, 3, 1]
         chromosome = [1, 2, 3, 3, 3, 2, 1, 2]

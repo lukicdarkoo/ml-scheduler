@@ -63,9 +63,9 @@ class PredefinedImporter(object):
 
         # Generate processors
         processors = [
-            Processor(capacity=0.1, index=0),
-            Processor(capacity=0.2, index=1),
-            Processor(capacity=0.3, index=2)
+            Processor(capacity=0.3, index=0),
+            Processor(capacity=0.6, index=1),
+            Processor(capacity=1, index=2)
         ]
 
         return TaskGraph(graph=graph, tasks=tasks, etc=etc, processors=processors)

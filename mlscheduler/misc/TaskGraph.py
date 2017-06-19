@@ -14,6 +14,12 @@ class TaskGraph(object):
         self._processors = processors       # Scheduled tasks per processor
 
     """
+    Returns number of processor
+    """
+    def get_n_processors(self):
+        return len(self._etc[0])
+
+    """
     Returns exit task. It is used simplified DAG which has only one exit task.
     """
     def _get_exit_task(self):
