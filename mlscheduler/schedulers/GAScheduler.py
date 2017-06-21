@@ -1,6 +1,7 @@
 from math import floor
 from copy import deepcopy
 from random import random, randint
+from sys import float_info
 
 
 class Individual(object):
@@ -62,6 +63,10 @@ class Population(object):
     (10) F = w * ((T_max - T) / (T_max - T_min)) + (1 - w) * ((C_max - C) / (C_max - C_min))
     """
     def get_fitness(self, individual):
+        if abs(self.t_max - self.t_min) < float_info.epsilon or \
+                abs(self.c_max - self.c_min) < float_info.epsilon:
+            return 1
+
         return self._w * ((self.t_max - individual.total_time) / (self.t_max - self.t_min)) + \
             (1 - self._w) * ((self.c_max - individual.total_cost) / (self.c_max - self.c_min))
 
@@ -86,6 +91,9 @@ class Population(object):
             P_c = k2                                        , f_prim < f_avg
     """
     def get_p_c(self, f_prim):
+        if abs(self.f_max - self.f_avg) < float_info.epsilon:
+            return 1
+
         if f_prim >= self.f_avg:
             return self._k1 * ((self.f_max - f_prim) / (self.f_max - self.f_avg))
         return self._k2
@@ -97,6 +105,10 @@ class Population(object):
     """
     def get_p_m(self, entity):
         f = entity.fitness
+
+        if abs(self.f_max - self.f_avg) < float_info.epsilon:
+            return 1
+
         if f >= self.f_avg:
             return self._k3 * ((self.f_max - f) / (self.f_max - self.f_avg))
         return self._k4
@@ -140,7 +152,7 @@ class GAScheduler(object):
     def mutation_operation(self, population):
         for individual in population.individuals:
             if population.get_p_m(individual) > random():
-                genome_index = randint(0, len(individual.chromosome))
+                genome_index = randint(0, len(individual.chromosome) - 1)
                 individual.chromosome[genome_index] = randint(0, self._task_graph.get_n_processors())
 
     def generate_initial_population(self, n_tasks):
@@ -150,7 +162,6 @@ class GAScheduler(object):
             for j in range(n_tasks):
                 chromosome.append(randint(1, self._task_graph.get_n_processors()))
             individuals.append(Individual(chromosome=chromosome))
-            print(chromosome)
 
         return Population(task_graph=self._task_graph, individuals=individuals)
 
@@ -163,15 +174,23 @@ class GAScheduler(object):
         population = self.generate_initial_population(8)
         self.print_fitness(population)
 
+        for i in range(4):
+            population_new = self.selection_operation(population)
 
-        population_new = self.selection_operation(population)
+            if len(population_new.individuals) < 3:
+                break
 
-        self.crossover_operation(population_new)
-        self.mutation_operation(population_new)
+            self.crossover_operation(population_new)
+            self.mutation_operation(population_new)
 
-        population_new.calculate()
-        # self.print_fitness(population_new)
-        self.print_fitness(self.selection_operation(population_new))
+            population_new.calculate()
+            # self.print_fitness(population_new)
+            # self.print_fitness(self.selection_operation(population_new))
+
+            population = population_new
+
+        print('Total cost:', population.individuals[0].total_cost)
+        print('Total time:', population.individuals[0].total_time)
 
 
 
