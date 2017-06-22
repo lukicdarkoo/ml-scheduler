@@ -1,6 +1,6 @@
 from math import floor
 from copy import deepcopy
-from random import random, randint
+from random import random, randint, uniform
 from sys import float_info
 
 
@@ -34,7 +34,13 @@ class Population(object):
 
         self.calculate()
 
+    def append(self, individual):
+        self.individuals.append(individual)
+
     def calculate(self):
+        if len(self.individuals) is 0:
+            return
+
         for individual in self.individuals:
             self._task_graph.set_schedule(individual.chromosome)
             individual.total_time = self._task_graph.get_total_time()
@@ -115,9 +121,21 @@ class Population(object):
 
 
 class GAScheduler(object):
-    def __init__(self, task_graph, nind=100):
+    def __init__(self, task_graph, nind=100, max_terminate=150, no_change_terminate=10):
         self._nind = nind
         self._task_graph = task_graph
+        self._no_change_terminate = no_change_terminate
+        self._max_terminate = max_terminate
+
+    def get_random_individual(self, population):
+        temp_fitness_sum = 0
+        random_fitness_boundary = uniform(0, population.f_sum)
+        sorted_individuals = sorted(population.individuals, key=lambda x: x.fitness, reverse=True)
+
+        for individual in sorted_individuals:
+            temp_fitness_sum += individual.fitness
+            if temp_fitness_sum >= random_fitness_boundary:
+                return individual
 
     def selection_operation(self, population):
         individuals_new = []
@@ -133,27 +151,23 @@ class GAScheduler(object):
         return Population(task_graph=self._task_graph, individuals=individuals_new)
 
     @staticmethod
-    def crossover_operation(population):
-        previous_individual = population.individuals[0]
-        for individual_index in range(1, len(population.individuals)):
-            individual = population.individuals[individual_index]
-            f_prim = max([previous_individual.fitness, individual.fitness])
+    def crossover_operation(population, individual1, individual2):
+        f_prim = max([individual1.fitness, individual2.fitness])
 
-            # Crossover genome (by taking care about probability of crossover)
-            if population.get_p_c(f_prim) > random():
-                for i in range(len(individual.chromosome), 2):
-                    t = individual.chromosome[i]
-                    individual.chromosome[i] = previous_individual[i]
-                    previous_individual[i] = t
+        # Crossover genome (by taking care about probability of crossover)
+        if population.get_p_c(f_prim) > random():
+            individual = deepcopy(individual1)
 
-            # Save previous individual
-            previous_individual = individual
+            for i in range(0, randint(1, len(individual1.chromosome))):
+                individual.chromosome[i] = individual2.chromosome[i]
+            return individual
 
-    def mutation_operation(self, population):
-        for individual in population.individuals:
-            if population.get_p_m(individual) > random():
-                genome_index = randint(0, len(individual.chromosome) - 1)
-                individual.chromosome[genome_index] = randint(0, self._task_graph.get_n_processors())
+        return None
+
+    def mutation_operation(self, population, individual):
+        if population.get_p_m(individual) > random():
+            genome_index = randint(0, len(individual.chromosome) - 1)
+            individual.chromosome[genome_index] = randint(0, self._task_graph.get_n_processors())
 
     def generate_initial_population(self, n_tasks):
         individuals = []
@@ -171,26 +185,49 @@ class GAScheduler(object):
 
     def calculate(self):
         # Make initial population
-        population = self.generate_initial_population(8)
-        self.print_fitness(population)
+        population = self.generate_initial_population(n_tasks=8)
+        no_change_n = 0
+        previous_total_cost = 0
 
-        for i in range(4):
+        for i in range(self._max_terminate):
+            # Generate new population
+            # Initial population for next generation is list of elite individuals (individuals with  greatest fitness)
             population_new = self.selection_operation(population)
+            elite_population_num = len(population_new.individuals)
 
-            if len(population_new.individuals) < 3:
-                break
+            # Add additional individuals to make new generation of NIND individuals
+            for j in range(elite_population_num, self._nind):
+                individual = None
+                individual1 = self.get_random_individual(population)
+                individual2 = self.get_random_individual(population)
 
-            self.crossover_operation(population_new)
-            self.mutation_operation(population_new)
+                # Try to  apply crossover
+                crossover_individual = self.crossover_operation(population, individual1, individual2)
+
+                if crossover_individual is None:
+                    individual = individual1
+                else:
+                    individual = crossover_individual
+
+                # Try to apply mutation
+                self.mutation_operation(population, individual)
+                population_new.append(individual)
 
             population_new.calculate()
-            # self.print_fitness(population_new)
-            # self.print_fitness(self.selection_operation(population_new))
 
+            # Investigate break conditions
+            current_total_cost = population.individuals[0].total_cost
+            if abs(previous_total_cost - current_total_cost) < float_info.epsilon:
+                no_change_n += 1
+
+            if no_change_n >= self._no_change_terminate:
+                return population.individuals[0]
+
+            previous_total_cost = current_total_cost
             population = population_new
 
-        print('Total cost:', population.individuals[0].total_cost)
-        print('Total time:', population.individuals[0].total_time)
+        return population.individuals[0]
+
 
 
 
