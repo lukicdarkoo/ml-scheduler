@@ -1,8 +1,10 @@
 class Slot(object):
-    def __init__(self, processor, st, ft):
-        self.processor = processor
+    def __init__(self, st, ft):
         self.st = st
         self.ft = ft
+
+    def __str__(self):
+        return 'Slot(' + str(self.st) + ', ' + str(self.ft) + ')'
 
 
 class TaskDuplicator(object):
@@ -12,13 +14,27 @@ class TaskDuplicator(object):
     """
 
     @staticmethod
-    def _find_slots(task_graph):
-        tasks_per_processor = task_graph._tasks_per_processor
-        graph = task_graph._graph
+    def get_slot_before(task_graph, task):
+        ft_max = 0
 
-        for processor in tasks_per_processor:
-            previous_task = processor[0]
-            for task in processor:
-                pass
+        for task_i in task_graph.get_tasks_of_processor(task.processor):
+            if task_i.ft <= task.st and task_i.ft >= ft_max:
+                ft_max = task_i.ft
+
+        if ft_max != task.st:
+            return Slot(st=ft_max, ft=task.st)
+        return None
+
+    @staticmethod
+    def apply(task_graph):
+        for task in task_graph._tasks:
+            slot = TaskDuplicator.get_slot_before(task_graph, task)
+
+            predecessors = task_graph._graph.predecessors(task)
+            for predecessor in predecessors:
+
+                # print(task.processor.index, slot, task_graph._etc[predecessor.index][task.processor.index])
+                if slot is not None and task_graph._etc[predecessor.index][task.processor.index] <= (slot.ft - slot.st):
+                    print(task.processor.index, slot)
 
 

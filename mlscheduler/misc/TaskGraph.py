@@ -9,9 +9,17 @@ class TaskGraph(object):
         self._tasks = tasks                 # List of tasks
         self._graph = graph                 # DAG that represents dependencies between tasks
         self._etc = etc                     # Expect Time to Complete
-        self._n_processors = len(etc[0])    # Number of processors
         self._vm_base = vm_base
         self._processors = processors       # Scheduled tasks per processor
+
+    def get_tasks_of_processor(self, processor):
+        return list(filter(lambda x: x.processor == processor and x.processed is True, self._tasks))
+
+    def _get_last_task(self, processor):
+        tasks_of_processor = self.get_tasks_of_processor(processor)
+        if len(tasks_of_processor) > 0:
+            return max(tasks_of_processor, key=lambda x: x.ft)
+        return None
 
     """
     Returns number of processor
@@ -28,10 +36,15 @@ class TaskGraph(object):
     """
     Returns communication cost between two tasks (edge weight)
     """
-    def _get_c(self, task1, task2):
-        if task1.processor != task2.processor:
-            return self._graph.get_edge_data(task1, task2)['weight']
-        return 0
+    def _get_c(self, predecessor, successor):
+        if self._get_last_task(successor.processor) is not None and \
+                        self._get_last_task(successor.processor).processor.index == predecessor.processor.index:
+            return 0
+
+        if predecessor.processor == successor.processor:
+            return 0
+
+        return self._graph.get_edge_data(predecessor, successor)['weight']
 
     """
     Returns ETC value (Expected Time to Complete) for given task
@@ -43,7 +56,7 @@ class TaskGraph(object):
     Execution completion time of last task allocated to the processor
     """
     def _get_ava(self, processor):
-        last_task = processor.get_last_task()
+        last_task = self._get_last_task(processor)
         if last_task is not None:
             return last_task.ft
         return 0
@@ -58,15 +71,12 @@ class TaskGraph(object):
 
         ava = self._get_ava(task.processor)
         predecessors = self._graph.predecessors(task)
-        ft_plus_c_max = 0
 
         if len(predecessors) == 0:
             return ava
 
-        for predecessor in predecessors:
-            ft_plus_c = self._get_ft(predecessor) + self._get_c(predecessor, task)
-            if ft_plus_c > ft_plus_c_max:
-                ft_plus_c_max = ft_plus_c
+        ft_plus_c_max = max(map(lambda x: self._get_ft(x) + self._get_c(x, task), predecessors))
+
         return max([ava, ft_plus_c_max])
 
     """
@@ -90,22 +100,31 @@ class TaskGraph(object):
         exit_task = self._get_exit_task()
         exit_task.processor = self._processors[0]
 
-        total_time = self._get_ft(exit_task)
+        min_ft = None
+        min_st = None
+        min_processor = None
+
         for processor in self._processors:
             exit_task.processor = processor
-            temp_total_time = self._get_ft(exit_task)
+            ft = self._get_ft(exit_task)
 
-            if temp_total_time < total_time:
-                total_time = temp_total_time
+            if min_ft is None or ft < min_ft:
+                min_ft = ft
+                min_st = self._get_st(exit_task)
+                min_processor = processor
 
-        return total_time
+        exit_task.ft = min_ft
+        exit_task.st = min_st
+        exit_task.processor = min_processor
+        exit_task.processed = True
+
+        return min_ft
 
     """
     Calculates the monetary cost of p_i pre unit time
     (5) VM_cost(i) = VM_base * exp^R_base
     """
     def _get_vm_cost(self, processor):
-        # TODO: "R_base denotes the speed ratio between them", between what?
         return self._vm_base * exp(processor.capacity)
 
     """
@@ -133,9 +152,6 @@ class TaskGraph(object):
         for task in self._tasks:
             task.processed = False
 
-        for processor in self._processors:
-            processor.clear()
-
     """
     Calculate start & finish times
     """
@@ -143,7 +159,6 @@ class TaskGraph(object):
         self._tasks[0].st = 0
         self._tasks[0].ft = self._get_ft(self._tasks[0])
         self._tasks[0].processed = True
-        self._tasks[0].processor.add_task(self._tasks[0])
         successors = self._graph.successors(self._tasks[0])
         while len(successors) > 1:
             # Process successors
@@ -151,7 +166,6 @@ class TaskGraph(object):
                 successor.st = self._get_st(successor)
                 successor.ft = self._get_ft(successor)
                 successor.processed = True
-                successor.processor.add_task(successor)
 
             # Find all successors level above
             successors_of_successors = []
@@ -160,29 +174,6 @@ class TaskGraph(object):
                     if successors_of_successor not in successors_of_successors:
                         successors_of_successors.append(successors_of_successor)
             successors = successors_of_successors
-
-    """
-    Set task scheduling across processors. 
-    :param schedule: Array of indexes that represent index of processor that should be assigned to task. 
-        Length of list should be (number of tasks - 2) because first and last should not be in list 
-        (set_schedule() has integrated logic for scheduling first & last task).
-    """
-    def set_schedule(self, schedule):
-        self.clear()
-
-        # Schedule first task
-        first_processor_index = self._etc[0].index(min(self._etc[0]))
-        first_processor = self._processors[first_processor_index]
-        self._tasks[0].processor = first_processor
-
-        # Schedule other tasks
-        task_index = 1
-        for processor_number in schedule:
-            processor_index = processor_number - 1
-            self._tasks[task_index].processor = self._processors[processor_index]
-            task_index += 1
-
-        self.calculate_st_ft()
 
     """
     Visualise the graph.
@@ -198,18 +189,23 @@ class TaskGraph(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        for processor_index in range(self._n_processors):
-            for task in self._processors[processor_index].tasks:
-                left_offset = processor_index * 1.0
-                rectangle = patches.Rectangle((left_offset, task.st),  0.9,  task.ft - task.st,
-                                              alpha=0.2, edgecolor="#000000")
-                ax.add_patch(rectangle)
+        for task in self._tasks:
+            processor_index = task.processor.index
+            left_offset = processor_index * 1.0
 
-                # Print task name
-                rx, ry = rectangle.get_xy()
-                cx = rx + rectangle.get_width() / 2.0
-                cy = ry + rectangle.get_height() / 2.0
-                ax.annotate('v' + str(task.index + 1), (cx, cy), ha='center', va='center')
+            if task.ft is None:
+                print('task.ft is None:', task)
+                continue
+
+            rectangle = patches.Rectangle((left_offset, task.st),  0.9,  task.ft - task.st,
+                                          alpha=0.2, edgecolor="#000000")
+            ax.add_patch(rectangle)
+
+            # Print task name
+            rx, ry = rectangle.get_xy()
+            cx = rx + rectangle.get_width() / 2.0
+            cy = ry + rectangle.get_height() / 2.0
+            ax.annotate('v' + str(task.index + 1), (cx, cy), ha='center', va='center')
 
         ax.autoscale_view(True, True, True)
         plt.show()

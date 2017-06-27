@@ -8,6 +8,7 @@ class Task(object):
         self.ft = None         # Finish execution time
         self.processor = None  # Processor
         self.processed = False
+        self.passed_stage = 0
 
     def __str__(self):
         return 'v' + str(self.index + 1) + '; ' + str(self.length)
