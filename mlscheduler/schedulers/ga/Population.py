@@ -121,13 +121,13 @@ class Population(object):
         # Schedule first task
         first_processor_index = self._task_graph._etc[0].index(min(self._task_graph._etc[0]))
         first_processor = self._task_graph._processors[first_processor_index]
-        self._task_graph._tasks[0].processor = first_processor
+        self._task_graph.get_tasks()[0].processor = first_processor
 
         # Schedule other tasks
         task_index = 1
         for processor_number in schedule:
             processor_index = processor_number - 1
-            self._task_graph._tasks[task_index].processor = self._task_graph._processors[processor_index]
+            self._task_graph.get_tasks()[task_index].processor = self._task_graph._processors[processor_index]
             task_index += 1
 
         self._task_graph.calculate_st_ft()

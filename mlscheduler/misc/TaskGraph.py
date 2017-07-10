@@ -2,24 +2,46 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from math import exp
 import matplotlib.patches as patches
+from copy import deepcopy
+from pprint import pprint
+
 
 
 class TaskGraph(object):
-    def __init__(self, tasks, graph, etc, processors, vm_base=0.1):
-        self._tasks = tasks                 # List of tasks
+    def __init__(self, graph, etc, processors, vm_base=0.1):
         self._graph = graph                 # DAG that represents dependencies between tasks
         self._etc = etc                     # Expect Time to Complete
         self._vm_base = vm_base
         self._processors = processors       # Scheduled tasks per processor
 
+    def copy(self):
+        return TaskGraph(graph=self._graph.copy(), etc=self._etc, vm_base=self._vm_base, processors=self._processors)
+
+    def get_tasks(self):
+        return self._graph.nodes()
+
     def get_tasks_of_processor(self, processor):
-        return list(filter(lambda x: x.processor == processor and x.processed is True, self._tasks))
+        return list(filter(lambda x: x.processor == processor and x.processed is True, self.get_tasks()))
 
     def _get_last_task(self, processor):
         tasks_of_processor = self.get_tasks_of_processor(processor)
         if len(tasks_of_processor) > 0:
             return max(tasks_of_processor, key=lambda x: x.ft)
         return None
+
+    def insert_duplicated_task(self, original, duplicated):
+        self._graph.add_node(duplicated)
+
+        for predecessor in self._graph.predecessors(original):
+            weight = self._graph.get_edge_data(predecessor, original)['weight']
+            self._graph.add_edge(predecessor, duplicated, weight=weight)
+
+        for successor in self._graph.successors(original):
+            weight = self._graph.get_edge_data(original, successor)['weight']
+            self._graph.add_edge(duplicated, successor, weight=weight)
+
+    def get_etc(self, task, processor):
+        return self._etc[task.index][processor.index]
 
     """
     Returns number of processor
@@ -28,10 +50,16 @@ class TaskGraph(object):
         return len(self._etc[0])
 
     """
+    Returns entry task. It is used simplified DAG which has only one entry task.
+    """
+    def _get_entry_task(self):
+        return list(filter(lambda x: len(self._graph.predecessors(x)) == 0 and x.duplicated is False, self.get_tasks()))[0]
+
+    """
     Returns exit task. It is used simplified DAG which has only one exit task.
     """
     def _get_exit_task(self):
-        return self._tasks[len(self._tasks) - 1]
+        return list(filter(lambda x: len(self._graph.successors(x)) == 0, self.get_tasks()))[0]
 
     """
     Returns communication cost between two tasks (edge weight)
@@ -74,6 +102,18 @@ class TaskGraph(object):
 
         if len(predecessors) == 0:
             return ava
+
+        for predecessor in predecessors:
+            duplicated_predecessors = list(filter(lambda x: x.index == predecessor.index, predecessors))
+            if len(duplicated_predecessors) > 1:
+                for duplicated_predecessor in duplicated_predecessors:
+                    if self._get_c(duplicated_predecessor, task) != 0:
+                        predecessors.remove(duplicated_predecessor)
+                        pass
+
+        if task.index == 1:
+            x = predecessors[0]
+            print(task, self._get_ft(x))
 
         ft_plus_c_max = max(map(lambda x: self._get_ft(x) + self._get_c(x, task), predecessors))
 
@@ -140,7 +180,7 @@ class TaskGraph(object):
     """
     def get_total_cost(self):
         total_cost = 0
-        for task in self._tasks:
+        for task in self.get_tasks():
             total_cost += self._get_cost(task)
 
         return total_cost
@@ -149,23 +189,25 @@ class TaskGraph(object):
     Clear previous configuration
     """
     def clear(self):
-        for task in self._tasks:
+        for task in self.get_tasks():
             task.processed = False
 
     """
     Calculate start & finish times
     """
     def calculate_st_ft(self):
-        self._tasks[0].st = 0
-        self._tasks[0].ft = self._get_ft(self._tasks[0])
-        self._tasks[0].processed = True
-        successors = self._graph.successors(self._tasks[0])
+        entry_task = self._get_entry_task()
+        entry_task.st = 0
+        entry_task.ft = self._get_ft(entry_task)
+        entry_task.processed = True
+        successors = self._graph.successors(entry_task)
         while len(successors) > 1:
             # Process successors
             for successor in successors:
-                successor.st = self._get_st(successor)
-                successor.ft = self._get_ft(successor)
-                successor.processed = True
+                if successor.duplicated is False:
+                    successor.st = self._get_st(successor)
+                    successor.ft = self._get_ft(successor)
+                    successor.processed = True
 
             # Find all successors level above
             successors_of_successors = []
@@ -189,7 +231,7 @@ class TaskGraph(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        for task in self._tasks:
+        for task in self.get_tasks():
             processor_index = task.processor.index
             left_offset = processor_index * 1.0
 
@@ -216,6 +258,6 @@ class TaskGraph(object):
     def print_schedule(self):
         for processor in self._processors:
             tasks_str = ''
-            for task in processor.tasks:
+            for task in filter(lambda x: x.processor == processor, self.get_tasks()):
                 tasks_str += 'v' + str(task.index + 1) + ' (' + str(task.st) + ' - ' + str(task.ft) + '), '
             print('Processor #' + str(self._processors.index(processor) + 1) + ': ' + tasks_str)

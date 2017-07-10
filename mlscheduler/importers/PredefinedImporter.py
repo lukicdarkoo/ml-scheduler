@@ -68,5 +68,5 @@ class PredefinedImporter(object):
             Processor(capacity=1, index=2)
         ]
 
-        return TaskGraph(graph=graph, tasks=tasks, etc=etc, processors=processors)
+        return TaskGraph(graph=graph, etc=etc, processors=processors)
 

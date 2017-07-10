@@ -15,7 +15,9 @@ class GASchedulerTestUseCase(object):
         individual = ga_scheduler.calculate()
 
         task_graph.draw_schedule()
-        TaskDuplicator.apply(task_graph)
+        TaskDuplicator.apply2(task_graph)
+        task_graph.draw_schedule()
+
         print('Total cost:', individual.total_cost)
         print('Total time:', individual.total_time)
 

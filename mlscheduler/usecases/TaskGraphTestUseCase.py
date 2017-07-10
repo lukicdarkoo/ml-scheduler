@@ -1,5 +1,6 @@
 from importers.RandomImporter import RandomImporter
 from importers.PredefinedImporter import PredefinedImporter
+from schedulers.TaskDuplicator import TaskDuplicator
 
 
 class TaskGraphTestUseCase(object):
@@ -23,4 +24,3 @@ class TaskGraphTestUseCase(object):
         task_graph.print_schedule()
         # task_graph.draw_graph()
         task_graph.draw_schedule()
-
