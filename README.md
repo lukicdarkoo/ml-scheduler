@@ -21,5 +21,6 @@ or you can run different use case, eg.:
 - Data flow (https://www.draw.io/#G0B8iyR5YUITZYQXRPRnc5OWtQQ3M)
 
 ## TODO
-[-] Fitness function  
-[-] GA
+[x] Fitness function  
+[x] GA  
+[-] Task Duplication
