@@ -36,6 +36,6 @@ class TaskDuplicatorTestUseCase(object):
         task_graph.draw_schedule()
 
         # Apply Task Duplicator
-        TaskDuplicator.apply(task_graph)
+        # TaskDuplicator.apply2(task_graph)
         task_graph.draw_schedule()
 

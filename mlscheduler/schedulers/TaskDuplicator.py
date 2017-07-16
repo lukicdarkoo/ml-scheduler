@@ -29,6 +29,22 @@ class TaskDuplicator(object):
         return None
 
     @staticmethod
+    def try_add_duplicated_task_before(task_graph, task):
+        slot = TaskDuplicator.get_slot_before(task_graph, task)
+
+        predecessors = task_graph._graph.predecessors(task)
+        for predecessor in predecessors:
+            # print(task.processor.index, slot, task_graph._etc[predecessor.index][task.processor.index])
+            if slot is not None and task_graph.get_etc(predecessor, task.processor) <= (slot.ft - slot.st):
+                duplicated_task = deepcopy(predecessor)
+                duplicated_task.st = slot.st
+                duplicated_task.ft = slot.st + task_graph.get_etc(predecessor, task.processor)
+                duplicated_task.processor = task.processor
+
+                task_graph.insert_duplicated_task(predecessor, duplicated_task)
+                break
+
+    @staticmethod
     def apply(task_graph):
         successors = task_graph._graph.successors(task_graph._get_entry_task())
 
@@ -62,8 +78,8 @@ class TaskDuplicator(object):
                         successors_of_successors.append(successors_of_successor)
             successors = successors_of_successors
 
-        task_graph.clear()
-        task_graph.calculate_st_ft()
+            task_graph.clear()
+            task_graph.calculate_st_ft()
 
     @staticmethod
     def apply2(task_graph):
@@ -88,7 +104,8 @@ class TaskDuplicator(object):
                     print(duplicated_task, duplicated_task.processor, duplicated_task.st, duplicated_task.ft, duplicated_task.processed)
                     break
 
-        # task_graph.clear()
-        task_graph.calculate_st_ft()
+                task_graph.clear()
+                task_graph.calculate_st_ft()
+
 
 

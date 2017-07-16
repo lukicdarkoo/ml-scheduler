@@ -2,9 +2,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from math import exp
 import matplotlib.patches as patches
-from copy import deepcopy
-from pprint import pprint
-
+from schedulers.TaskDuplicator import TaskDuplicator
 
 
 class TaskGraph(object):
@@ -93,8 +91,8 @@ class TaskGraph(object):
     Calculates execution start time of task v_i on processor p_k (st(v_i, p_k))
     (2) st(v_i, p_k) = max{ ava(p_k), max(ft(v_j, p_x) + C(e_ji)) }
     """
-    def _get_st(self, task):
-        if task.processed is True:
+    def _get_st(self, task, use_cached=True):
+        if task.processed is True and use_cached is True:
             return task.st
 
         ava = self._get_ava(task.processor)
@@ -103,17 +101,13 @@ class TaskGraph(object):
         if len(predecessors) == 0:
             return ava
 
+        # Ignore same tasks with high communication cost (tasks on different processor)
         for predecessor in predecessors:
             duplicated_predecessors = list(filter(lambda x: x.index == predecessor.index, predecessors))
             if len(duplicated_predecessors) > 1:
-                for duplicated_predecessor in duplicated_predecessors:
-                    if self._get_c(duplicated_predecessor, task) != 0:
-                        predecessors.remove(duplicated_predecessor)
-                        pass
-
-        if task.index == 1:
-            x = predecessors[0]
-            print(task, self._get_ft(x))
+                min_c_predecessor = min(duplicated_predecessors, key=lambda x: self._get_c(x, task))
+                to_remove = list(filter(lambda x: x.index == predecessor.index and x != min_c_predecessor, predecessors))
+                predecessors = [x for x in predecessors if x not in to_remove]
 
         ft_plus_c_max = max(map(lambda x: self._get_ft(x) + self._get_c(x, task), predecessors))
 
@@ -123,8 +117,8 @@ class TaskGraph(object):
     Calculates execution finish time
     (3) ft(v_i, p_k) = st(v_i, p_k) + ETC(k, i)
     """
-    def _get_ft(self, task):
-        if task.processed is True:
+    def _get_ft(self, task, use_cached=True):
+        if task.processed is True and use_cached is True:
             return task.ft
 
         start_time = self._get_st(task)
@@ -204,10 +198,13 @@ class TaskGraph(object):
         while len(successors) > 1:
             # Process successors
             for successor in successors:
-                if successor.duplicated is False:
-                    successor.st = self._get_st(successor)
-                    successor.ft = self._get_ft(successor)
-                    successor.processed = True
+                successor.st = self._get_st(successor)
+                successor.ft = self._get_ft(successor)
+                TaskDuplicator.try_add_duplicated_task_before(self, successor)
+
+                successor.st = self._get_st(successor, False)
+                successor.ft = self._get_ft(successor, False)
+                successor.processed = True
 
             # Find all successors level above
             successors_of_successors = []
