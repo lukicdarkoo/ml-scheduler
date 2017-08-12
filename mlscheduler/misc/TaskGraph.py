@@ -6,14 +6,18 @@ from schedulers.TaskDuplicator import TaskDuplicator
 
 
 class TaskGraph(object):
-    def __init__(self, graph, etc, processors, vm_base=0.1):
+    def __init__(self, graph, etc, processors, task_duplicator=None, vm_base=0.1):
         self._graph = graph                 # DAG that represents dependencies between tasks
         self._etc = etc                     # Expect Time to Complete
         self._vm_base = vm_base
         self._processors = processors       # Scheduled tasks per processor
+        self._task_duplicator = task_duplicator
 
     def copy(self):
         return TaskGraph(graph=self._graph.copy(), etc=self._etc, vm_base=self._vm_base, processors=self._processors)
+
+    def set_task_duplicator(self, task_duplicator):
+        self._task_duplicator = task_duplicator
 
     def get_tasks(self):
         return self._graph.nodes()
@@ -186,10 +190,37 @@ class TaskGraph(object):
         for task in self.get_tasks():
             task.processed = False
 
+    def calculate(self):
+        if self._task_duplicator is not None:
+            self._calculate_st_ft(duplication_enabled=False)
+
+            time = self.get_total_time()
+            cost = self.get_total_cost()
+
+            while True:
+                duplicated_task = self._calculate_st_ft(duplication_enabled=True)
+
+                time_duplicated = self.get_total_time()
+                cost_duplicated = self.get_total_cost()
+
+                print(duplicated_task)
+
+                if not self._task_duplicator.task_duplication_condition(time=time, time_duplicated=time_duplicated,
+                                                                        cost=cost, cost_duplicated=cost_duplicated):
+                    duplicated_task.slot = True
+                    print('asdadas')
+
+                time = time_duplicated
+                cost = cost_duplicated
+
+        else:
+            self._calculate_st_ft(duplication_enabled=False)
+
     """
     Calculate start & finish times
     """
-    def calculate_st_ft(self):
+    def _calculate_st_ft(self, duplication_enabled=True):
+        duplicated_task = None
         entry_task = self._get_entry_task()
         entry_task.st = 0
         entry_task.ft = self._get_ft(entry_task)
@@ -200,7 +231,8 @@ class TaskGraph(object):
             for successor in successors:
                 successor.st = self._get_st(successor)
                 successor.ft = self._get_ft(successor)
-                TaskDuplicator.try_add_duplicated_task_before(self, successor)
+                if duplication_enabled is True and duplicated_task is None:
+                    duplicated_task = self._task_duplicator.try_add_duplicated_task_before(self, successor)
 
                 successor.st = self._get_st(successor, False)
                 successor.ft = self._get_ft(successor, False)
@@ -213,6 +245,8 @@ class TaskGraph(object):
                     if successors_of_successor not in successors_of_successors:
                         successors_of_successors.append(successors_of_successor)
             successors = successors_of_successors
+
+        return duplicated_task
 
     """
     Visualise the graph.
