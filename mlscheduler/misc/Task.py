@@ -9,6 +9,7 @@ class Task(object):
         self.processor = None  # Processor
         self.processed = False
         self.duplicated = False
+        self.slot = False
 
     def __str__(self):
         return 'v' + str(self.index + 1) + '; ' + str(self.length)

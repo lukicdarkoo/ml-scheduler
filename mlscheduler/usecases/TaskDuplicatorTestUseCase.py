@@ -15,16 +15,15 @@ class TaskDuplicatorTestUseCase(object):
             task_graph.get_tasks()[task_index].processor = task_graph._processors[processor_index]
             task_index += 1
 
-        task_graph._calculate_st_ft()
-
-        # Bug, cause of problem multiple task duplication
-        # task_graph.calculate()
-
-        # Minimal, extracted, version of bug. During second calculation of total time and cost
-        # everything is messed up.
-        # task_graph._calculate_st_ft(True)
-        # task_graph.clear()
-        # task_graph._calculate_st_ft(True)
+        if False:
+            # Minimal, extracted, version of bug. During second calculation of total time and cost
+            # everything is messed up.
+            task_graph._calculate_st_ft()
+            task_graph.clear()
+            task_graph._calculate_st_ft(True)
+        else:
+            # Bug, cause of problem multiple task duplication
+            task_graph.calculate()
 
     @staticmethod
     def run():
@@ -33,7 +32,7 @@ class TaskDuplicatorTestUseCase(object):
 
         chromosome = [3, 1, 2, 3, 3, 3, 2, 1, 2]
         task_graph = PredefinedImporter.get_task_graph()
-        task_graph.set_task_duplicator(TaskDuplicator(w=0.1))
+        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.99))
         TaskDuplicatorTestUseCase.set_schedule(task_graph, chromosome)
 
         total_time = task_graph.get_total_time()

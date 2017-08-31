@@ -23,13 +23,16 @@ class TaskGraph(object):
         return self._graph.nodes()
 
     def get_tasks_of_processor(self, processor):
-        return list(filter(lambda x: x.processor == processor and x.processed is True, self.get_tasks()))
+        return list(filter(lambda x: x.processor == processor and (x.processed is True or x.duplicated is True), self.get_tasks()))
 
     def _get_last_task(self, processor):
-        tasks_of_processor = self.get_tasks_of_processor(processor)
+        tasks_of_processor = list(filter(lambda x: x.processed is True, self.get_tasks_of_processor(processor)))
         if len(tasks_of_processor) > 0:
             return max(tasks_of_processor, key=lambda x: x.ft)
         return None
+
+    def delete_task(self, task):
+        self._graph.remove_node(task)
 
     def insert_duplicated_task(self, original, duplicated):
         self._graph.add_node(duplicated)
@@ -200,18 +203,22 @@ class TaskGraph(object):
             while True:
                 duplicated_task = self._calculate_st_ft(duplication_enabled=True)
 
+                if duplicated_task is None:
+                    break
+
                 time_duplicated = self.get_total_time()
                 cost_duplicated = self.get_total_cost()
 
-                print(duplicated_task)
-
-                if not self._task_duplicator.task_duplication_condition(time=time, time_duplicated=time_duplicated,
+                if self._task_duplicator.task_duplication_condition(time=time, time_duplicated=time_duplicated,
                                                                         cost=cost, cost_duplicated=cost_duplicated):
+                    # Scheduling is better with duplicated task -> Keep it
+                    time = time_duplicated
+                    cost = cost_duplicated
+                else:
+                    # Scheduling is worse with duplicated task -> Throw it
                     duplicated_task.slot = True
-                    print('asdadas')
 
-                time = time_duplicated
-                cost = cost_duplicated
+                self.clear()
 
         else:
             self._calculate_st_ft(duplication_enabled=False)
@@ -262,13 +269,9 @@ class TaskGraph(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        for task in self.get_tasks():
+        for task in list(filter(lambda x: x.slot is False, self.get_tasks())):
             processor_index = task.processor.index
             left_offset = processor_index * 1.0
-
-            if task.ft is None:
-                print('task.ft is None:', task)
-                continue
 
             rectangle = patches.Rectangle((left_offset, task.st),  0.9,  task.ft - task.st,
                                           alpha=0.2, edgecolor="#000000")

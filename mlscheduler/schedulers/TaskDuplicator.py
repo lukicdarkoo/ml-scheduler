@@ -1,4 +1,5 @@
 from copy import deepcopy
+from sys import float_info
 
 
 class Slot(object):
@@ -37,10 +38,10 @@ class TaskDuplicator(object):
         max_price = max([cost, cost_duplicated])
         k = pow(self._w / (1 - self._w), 2)
 
-        if abs(time_duplicated - time) is 0:
-            return True
+        if abs(time_duplicated - time) < float_info.epsilon:
+            return time_duplicated < time
 
-        return (abs(cost_duplicated - cost) / abs(time_duplicated - time)) > (k * max_price)
+        return -(abs(cost_duplicated - cost) / abs(time_duplicated - time)) < (k * max_price)
 
     def try_add_duplicated_task_before(self, task_graph, task):
         slot = self._get_slot_before(task_graph, task)
@@ -53,6 +54,7 @@ class TaskDuplicator(object):
                 duplicated_task.st = slot.st
                 duplicated_task.ft = slot.st + task_graph.get_etc(predecessor, task.processor)
                 duplicated_task.processor = task.processor
+                duplicated_task.duplicated = True
 
                 task_graph.insert_duplicated_task(predecessor, duplicated_task)
                 return duplicated_task
