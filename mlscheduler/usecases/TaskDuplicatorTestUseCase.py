@@ -22,7 +22,7 @@ class TaskDuplicatorTestUseCase(object):
 
         chromosome = [1, 1, 2, 3, 3, 1, 2, 1, 2]
         task_graph = PredefinedImporter.get_task_graph()
-        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.9))
+        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.2))
         TaskDuplicatorTestUseCase.set_schedule(task_graph, chromosome)
 
         total_time = task_graph.get_total_time()

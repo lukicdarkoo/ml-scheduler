@@ -210,6 +210,7 @@ class TaskGraph(object):
 
             while True:
                 duplicated_task = self._calculate_st_ft(duplication_enabled=True)
+                self.draw_schedule()
 
                 if duplicated_task is None:
                     break
@@ -246,13 +247,16 @@ class TaskGraph(object):
     """
     def _calculate_st_ft(self, duplication_enabled=True):
         self.clear()
-
         duplicated_task = None
-        entry_task = self._get_entry_task()
-        entry_task.st = 0
-        entry_task.ft = self._get_ft(entry_task)
-        entry_task.processed = True
-        successors = self._sort_tasks(self._graph.successors(entry_task))
+
+        # Calculate start time & finish time for entry task and their's duplicates
+        entry_tasks = list(filter(lambda x: len(self._graph.predecessors(x)) == 0, self.get_tasks()))
+        for t in entry_tasks:
+            t.st = self._get_st(t)
+            t.ft = self._get_ft(t)
+            t.processed = True
+
+        successors = self._sort_tasks(self._graph.successors(self._get_entry_task()))
         while len(successors) > 1:
             for successor in successors:
                 successor.st = self._get_st(successor)
