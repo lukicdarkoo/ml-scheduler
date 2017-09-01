@@ -6,12 +6,14 @@ from schedulers.TaskDuplicator import TaskDuplicator
 
 
 class TaskGraph(object):
-    def __init__(self, graph, etc, processors, task_duplicator=None, vm_base=0.1):
+    def __init__(self, graph, etc, processors, task_duplicator=None, vm_base=0.1, alpha=1, beta=1):
         self._graph = graph                 # DAG that represents dependencies between tasks
         self._etc = etc                     # Expect Time to Complete
         self._vm_base = vm_base
         self._processors = processors       # Scheduled tasks per processor
         self._task_duplicator = task_duplicator
+        self._alpha = alpha
+        self._beta = beta
 
     def copy(self):
         return TaskGraph(graph=self._graph.copy(), etc=self._etc, vm_base=self._vm_base, processors=self._processors)
@@ -70,12 +72,12 @@ class TaskGraph(object):
     Returns communication cost between two tasks (edge weight)
     """
     def _get_c(self, predecessor, successor):
-        if self._get_last_task(successor.processor) is not None and \
-                        self._get_last_task(successor.processor).processor.index == predecessor.processor.index:
-            return 0
-
         if predecessor.processor == successor.processor:
             return 0
+
+        for task in self.get_tasks_of_processor(successor.processor):
+            if task.index == predecessor.index:
+                return 0
 
         return self._graph.get_edge_data(predecessor, successor)['weight']
 
@@ -109,12 +111,16 @@ class TaskGraph(object):
             return ava
 
         # Ignore same tasks with high communication cost (tasks on different processor)
+        # If predecessor has a copy and one of the copies is on same processor delete all other copies
         for predecessor in predecessors:
-            duplicated_predecessors = list(filter(lambda x: x.index == predecessor.index, predecessors))
-            if len(duplicated_predecessors) > 1:
-                min_c_predecessor = min(duplicated_predecessors, key=lambda x: self._get_c(x, task))
-                to_remove = list(filter(lambda x: x.index == predecessor.index and x != min_c_predecessor, predecessors))
-                predecessors = [x for x in predecessors if x not in to_remove]
+            same_tasks = list(filter(lambda x: x.index == predecessor.index, predecessors))
+            if len(same_tasks) > 1:
+                same_tasks_diff_process = list(filter(lambda x: x.processor != task.processor, same_tasks))
+                if len(same_tasks) - len(same_tasks_diff_process) > 0:
+                    predecessors = [x for x in predecessors if x not in same_tasks_diff_process]
+                else:
+                    min_c_predecessor = min(same_tasks_diff_process, key=lambda x: self._get_c(x, task))
+                    predecessors = [x for x in predecessors if x not in same_tasks_diff_process or x == min_c_predecessor]
 
         ft_plus_c_max = max(map(lambda x: self._get_ft(x) + self._get_c(x, task), predecessors))
 
@@ -194,6 +200,8 @@ class TaskGraph(object):
             task.processed = False
 
     def calculate(self):
+        self._task_duplicator.blacklist.clear()
+
         if self._task_duplicator is not None:
             self._calculate_st_ft(duplication_enabled=False)
 
@@ -210,31 +218,42 @@ class TaskGraph(object):
                 cost_duplicated = self.get_total_cost()
 
                 if self._task_duplicator.task_duplication_condition(time=time, time_duplicated=time_duplicated,
-                                                                        cost=cost, cost_duplicated=cost_duplicated):
+                                                                    cost=cost, cost_duplicated=cost_duplicated):
                     # Scheduling is better with duplicated task -> Keep it
                     time = time_duplicated
                     cost = cost_duplicated
                 else:
                     # Scheduling is worse with duplicated task -> Throw it
-                    duplicated_task.slot = True
+                    self._task_duplicator.blacklist.append(duplicated_task)
+                    self._graph.remove_node(duplicated_task)
 
-                self.clear()
+        self._calculate_st_ft(duplication_enabled=False)
 
-        else:
-            self._calculate_st_ft(duplication_enabled=False)
+    def _sort_tasks_condition(self, task):
+        communication_cost = 0
+        number_of_successors = len(self._graph.successors(task))
+
+        for successor in self._graph.successors(task):
+            communication_cost += self._graph.get_edge_data(task, successor)['weight']
+
+        return self._alpha * number_of_successors + self._beta * communication_cost
+
+    def _sort_tasks(self, tasks):
+        return sorted(tasks, key=self._sort_tasks_condition, reverse=True)
 
     """
     Calculate start & finish times
     """
     def _calculate_st_ft(self, duplication_enabled=True):
+        self.clear()
+
         duplicated_task = None
         entry_task = self._get_entry_task()
         entry_task.st = 0
         entry_task.ft = self._get_ft(entry_task)
         entry_task.processed = True
-        successors = self._graph.successors(entry_task)
+        successors = self._sort_tasks(self._graph.successors(entry_task))
         while len(successors) > 1:
-            # Process successors
             for successor in successors:
                 successor.st = self._get_st(successor)
                 successor.ft = self._get_ft(successor)
@@ -251,7 +270,7 @@ class TaskGraph(object):
                 for successors_of_successor in self._graph.successors(successor):
                     if successors_of_successor not in successors_of_successors:
                         successors_of_successors.append(successors_of_successor)
-            successors = successors_of_successors
+            successors = self._sort_tasks(successors_of_successors)
 
         return duplicated_task
 
@@ -269,12 +288,13 @@ class TaskGraph(object):
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
-        for task in list(filter(lambda x: x.slot is False, self.get_tasks())):
+        for task in self.get_tasks():
             processor_index = task.processor.index
             left_offset = processor_index * 1.0
+            face_color = "#ff0000" if task.duplicated is True else "#0000ff"
 
             rectangle = patches.Rectangle((left_offset, task.st),  0.9,  task.ft - task.st,
-                                          alpha=0.2, edgecolor="#000000")
+                                          alpha=0.4, edgecolor="#000000", facecolor=face_color)
             ax.add_patch(rectangle)
 
             # Print task name
@@ -282,6 +302,21 @@ class TaskGraph(object):
             cx = rx + rectangle.get_width() / 2.0
             cy = ry + rectangle.get_height() / 2.0
             ax.annotate('v' + str(task.index + 1), (cx, cy), ha='center', va='center')
+
+        if self._task_duplicator is not None:
+            for task in self._task_duplicator.blacklist:
+                processor_index = task.processor.index
+                left_offset = processor_index * 1.0
+
+                rectangle = patches.Rectangle((left_offset, task.st), 0.9, task.ft - task.st,
+                                              alpha=0.05, edgecolor="#000000", facecolor="#000000")
+                ax.add_patch(rectangle)
+
+                # Print task name
+                rx, ry = rectangle.get_xy()
+                cx = rx + rectangle.get_width() / 2.0
+                cy = ry + rectangle.get_height() / 2.0
+                ax.annotate('v' + str(task.index + 1), (cx, cy), ha='center', va='center', color="#aaaaaa")
 
         ax.autoscale_view(True, True, True)
         plt.show()

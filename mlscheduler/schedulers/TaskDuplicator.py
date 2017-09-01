@@ -14,6 +14,7 @@ class Slot(object):
 class TaskDuplicator(object):
     def __init__(self, w):
         self._w = w
+        self.blacklist = []
 
     """
     If processor p_k is ready to execute task v_i before the arrival of the execution results from its predecessor,
@@ -41,7 +42,13 @@ class TaskDuplicator(object):
         if abs(time_duplicated - time) < float_info.epsilon:
             return time_duplicated < time
 
-        return -(abs(cost_duplicated - cost) / abs(time_duplicated - time)) < (k * max_price)
+        return -((cost_duplicated - cost) / (time_duplicated - time)) < (k * max_price)
+
+    def is_in_blacklist(self, st, processor):
+        for task in self.blacklist:
+            if task.st == st and task.processor == processor:
+                return True
+        return False
 
     def try_add_duplicated_task_before(self, task_graph, task):
         slot = self._get_slot_before(task_graph, task)
@@ -49,12 +56,16 @@ class TaskDuplicator(object):
         predecessors = task_graph._graph.predecessors(task)
         for predecessor in predecessors:
             # print(task.processor.index, slot, task_graph._etc[predecessor.index][task.processor.index])
-            if slot is not None and task_graph.get_etc(predecessor, task.processor) <= (slot.ft - slot.st):
+            if slot is not None and \
+                    task_graph.get_etc(predecessor, task.processor) <= (slot.ft - slot.st) and \
+                    not self.is_in_blacklist(slot.st, task.processor):
+
                 duplicated_task = deepcopy(predecessor)
                 duplicated_task.st = slot.st
                 duplicated_task.ft = slot.st + task_graph.get_etc(predecessor, task.processor)
                 duplicated_task.processor = task.processor
                 duplicated_task.duplicated = True
+                duplicated_task.processed = True
 
                 task_graph.insert_duplicated_task(predecessor, duplicated_task)
                 return duplicated_task

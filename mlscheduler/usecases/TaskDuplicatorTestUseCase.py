@@ -6,8 +6,6 @@ from schedulers.TaskDuplicator import TaskDuplicator
 class TaskDuplicatorTestUseCase(object):
     @staticmethod
     def set_schedule(task_graph, schedule):
-        task_graph.clear()
-
         # Schedule other tasks
         task_index = 0
         for processor_number in schedule:
@@ -15,24 +13,16 @@ class TaskDuplicatorTestUseCase(object):
             task_graph.get_tasks()[task_index].processor = task_graph._processors[processor_index]
             task_index += 1
 
-        if False:
-            # Minimal, extracted, version of bug. During second calculation of total time and cost
-            # everything is messed up.
-            task_graph._calculate_st_ft()
-            task_graph.clear()
-            task_graph._calculate_st_ft(True)
-        else:
-            # Bug, cause of problem multiple task duplication
-            task_graph.calculate()
+        task_graph.calculate()
 
     @staticmethod
     def run():
         print("Running: " + TaskDuplicatorTestUseCase.__name__)
         print("-----------------------------------------")
 
-        chromosome = [3, 1, 2, 3, 3, 3, 2, 1, 2]
+        chromosome = [1, 1, 2, 3, 3, 1, 2, 1, 2]
         task_graph = PredefinedImporter.get_task_graph()
-        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.99))
+        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.9))
         TaskDuplicatorTestUseCase.set_schedule(task_graph, chromosome)
 
         total_time = task_graph.get_total_time()
