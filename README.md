@@ -3,7 +3,9 @@
 ![Example output](docs/example.png)
 ```
 $ python mlscheduler --usecase GASchedulerTestUseCase
+```
 
+```
 Params: w=0.99, nind=150, max_terminate=150, no_change_terminate=20, vm_base=0.1, alpha=1, beta=1, k1=0.6, k2=0.8, k3=0.1, k4=0.05
 ```
 
@@ -13,15 +15,18 @@ Make sure that you have installed Python & pip:
 - Debian `apt-get install python pip`  
 
 Install project dependencies  
-```python setup.py install```
+```
+$ python setup.py install
+```
 
 ## Run
-```python mlscheduler```  
+```
+$ python mlscheduler
+```  
 or you can run different use case, eg.:  
-```python mlscheduler --usecase TaskGraphTestUseCase```
-
-## Testing
-```python -m unittest test.TaskTest```
+```
+$ python mlscheduler --usecase TaskGraphTestUseCase
+```
 
 ## Useful links
 - Trello board (https://trello.com/b/WlySl9JH/bsc)  
