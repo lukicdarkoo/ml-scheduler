@@ -192,15 +192,8 @@ class TaskGraph(object):
 
         return total_cost
 
-    """
-    Clear previous configuration
-    """
-    def clear(self):
-        for task in self.get_tasks():
-            task.processed = False
-
     def calculate(self):
-        self._task_duplicator.blacklist.clear()
+        self.clear()
 
         if self._task_duplicator is not None:
             self._calculate_st_ft(duplication_enabled=False)
@@ -210,7 +203,6 @@ class TaskGraph(object):
 
             while True:
                 duplicated_task = self._calculate_st_ft(duplication_enabled=True)
-                self.draw_schedule()
 
                 if duplicated_task is None:
                     break
@@ -242,12 +234,28 @@ class TaskGraph(object):
     def _sort_tasks(self, tasks):
         return sorted(tasks, key=self._sort_tasks_condition, reverse=True)
 
+    def clear(self):
+        """
+        Delete duplicates, st & ft
+        """
+        if self._task_duplicator is not None:
+            self._task_duplicator.blacklist.clear()
+
+        for task in self.get_tasks():
+            if task.duplicated is True:
+                self._graph.remove_node(task)
+            else:
+                task.processed = False
+
     """
     Calculate start & finish times
     """
     def _calculate_st_ft(self, duplication_enabled=True):
-        self.clear()
         duplicated_task = None
+
+        # Delete previous calculations
+        for task in self.get_tasks():
+            task.processed = False
 
         # Calculate start time & finish time for entry task and their's duplicates
         entry_tasks = list(filter(lambda x: len(self._graph.predecessors(x)) == 0, self.get_tasks()))

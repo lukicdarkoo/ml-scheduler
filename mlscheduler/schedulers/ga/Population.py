@@ -130,4 +130,4 @@ class Population(object):
             self._task_graph.get_tasks()[task_index].processor = self._task_graph._processors[processor_index]
             task_index += 1
 
-        self._task_graph.calculate_st_ft()
+        self._task_graph.calculate()

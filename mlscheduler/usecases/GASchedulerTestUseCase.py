@@ -10,12 +10,11 @@ class GASchedulerTestUseCase(object):
         print("-----------------------------------------")
 
         task_graph = PredefinedImporter.get_task_graph()
+        task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=0.2))
         ga_scheduler = GAScheduler(task_graph=task_graph, nind=150, max_terminate=150, no_change_terminate=20, w=1)
 
         individual = ga_scheduler.calculate()
 
-        task_graph.draw_schedule()
-        TaskDuplicator.apply2(task_graph)
         task_graph.draw_schedule()
 
         print('Total cost:', individual.total_cost)
