@@ -74,6 +74,11 @@ class GAScheduler(object):
     def print_fitness(population):
         print(list(map(lambda x: population.get_fitness(x), population.individuals)))
 
+    def _get_graph_with_max_fitness(self, population):
+        best_individual = max(population.individuals, key=lambda x: x.fitness)
+        self._task_graph.set_schedule(best_individual.chromosome)
+        return self._task_graph.copy()
+
     def calculate(self):
         # Make initial population
         population = self.generate_initial_population(n_tasks=8)
@@ -112,12 +117,12 @@ class GAScheduler(object):
                 no_change_n += 1
 
             if no_change_n >= self._no_change_terminate:
-                return population.individuals[0]
+                return self._get_graph_with_max_fitness(population)
 
             previous_total_cost = current_total_cost
             population = population_new
 
-        return population.individuals[0]
+        return self._get_graph_with_max_fitness(population)
 
 
 

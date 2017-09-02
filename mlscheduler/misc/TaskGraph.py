@@ -2,7 +2,6 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from math import exp
 import matplotlib.patches as patches
-from schedulers.TaskDuplicator import TaskDuplicator
 
 
 class TaskGraph(object):
@@ -50,28 +49,51 @@ class TaskGraph(object):
     def get_etc(self, task, processor):
         return self._etc[task.index][processor.index]
 
-    """
-    Returns number of processor
-    """
+    def set_schedule(self, schedule):
+        """
+        Set task scheduling across processors.
+        :param schedule: Array of indexes that represent index of processor that should be assigned to task.
+            Length of list should be (number of tasks - 2) because first and last should not be in list
+            (set_schedule() has integrated logic for scheduling first & last task).
+        """
+        self.clear()
+
+        # Schedule first task
+        first_processor_index = self._etc[0].index(min(self._etc[0]))
+        first_processor = self._processors[first_processor_index]
+        self.get_tasks()[0].processor = first_processor
+
+        # Schedule other tasks
+        task_index = 1
+        for processor_number in schedule:
+            processor_index = processor_number - 1
+            self.get_tasks()[task_index].processor = self._processors[processor_index]
+            task_index += 1
+
+        self.calculate()
+
     def get_n_processors(self):
+        """
+        Returns number of processor
+        """
         return len(self._etc[0])
 
-    """
-    Returns entry task. It is used simplified DAG which has only one entry task.
-    """
     def _get_entry_task(self):
+        """
+        Returns entry task. It is used simplified DAG which has only one entry task.
+        """
         return list(filter(lambda x: len(self._graph.predecessors(x)) == 0 and x.duplicated is False, self.get_tasks()))[0]
 
-    """
-    Returns exit task. It is used simplified DAG which has only one exit task.
-    """
     def _get_exit_task(self):
+        """
+        Returns exit task. It is used simplified DAG which has only one exit task.
+        """
         return list(filter(lambda x: len(self._graph.successors(x)) == 0, self.get_tasks()))[0]
 
-    """
-    Returns communication cost between two tasks (edge weight)
-    """
     def _get_c(self, predecessor, successor):
+        """
+        Returns communication cost between two tasks (edge weight)
+        """
         if predecessor.processor == successor.processor:
             return 0
 
@@ -81,26 +103,26 @@ class TaskGraph(object):
 
         return self._graph.get_edge_data(predecessor, successor)['weight']
 
-    """
-    Returns ETC value (Expected Time to Complete) for given task
-    """
     def _get_etc(self, task):
+        """
+        Returns ETC value (Expected Time to Complete) for given task
+        """
         return self._etc[task.index][task.processor.index]
 
-    """
-    Execution completion time of last task allocated to the processor
-    """
     def _get_ava(self, processor):
+        """
+        Execution completion time of last task allocated to the processor
+        """
         last_task = self._get_last_task(processor)
         if last_task is not None:
             return last_task.ft
         return 0
 
-    """
-    Calculates execution start time of task v_i on processor p_k (st(v_i, p_k))
-    (2) st(v_i, p_k) = max{ ava(p_k), max(ft(v_j, p_x) + C(e_ji)) }
-    """
     def _get_st(self, task, use_cached=True):
+        """
+        Calculates execution start time of task v_i on processor p_k (st(v_i, p_k))
+        (2) st(v_i, p_k) = max{ ava(p_k), max(ft(v_j, p_x) + C(e_ji)) }
+        """
         if task.processed is True and use_cached is True:
             return task.st
 
@@ -126,11 +148,11 @@ class TaskGraph(object):
 
         return max([ava, ft_plus_c_max])
 
-    """
-    Calculates execution finish time
-    (3) ft(v_i, p_k) = st(v_i, p_k) + ETC(k, i)
-    """
     def _get_ft(self, task, use_cached=True):
+        """
+        Calculates execution finish time
+        (3) ft(v_i, p_k) = st(v_i, p_k) + ETC(k, i)
+        """
         if task.processed is True and use_cached is True:
             return task.ft
 
@@ -139,11 +161,11 @@ class TaskGraph(object):
 
         return finish_time
 
-    """
-    Calculates total time
-    (4) totalTime = min{ ft(v_exit, p_j) }
-    """
     def get_total_time(self):
+        """
+        Calculates total time
+        (4) totalTime = min{ ft(v_exit, p_j) }
+        """
         exit_task = self._get_exit_task()
         exit_task.processor = self._processors[0]
 
@@ -167,25 +189,25 @@ class TaskGraph(object):
 
         return min_ft
 
-    """
-    Calculates the monetary cost of p_i pre unit time
-    (5) VM_cost(i) = VM_base * exp^R_base
-    """
     def _get_vm_cost(self, processor):
+        """
+        Calculates the monetary cost of p_i pre unit time
+        (5) VM_cost(i) = VM_base * exp^R_base
+        """
         return self._vm_base * exp(processor.capacity)
 
-    """
-    Calculates the monetary cost for executing task v_j on processor p_i
-    (6) cost(i, j) = VM_cost(i) * ETC(i, j)
-    """
     def _get_cost(self, task):
+        """
+        Calculates the monetary cost for executing task v_j on processor p_i
+        (6) cost(i, j) = VM_cost(i) * ETC(i, j)
+        """
         return self._get_vm_cost(task.processor) * self._get_etc(task)
 
-    """
-    Calculates total cost
-    (7) totalCost = sum(cost(i, j))
-    """
     def get_total_cost(self):
+        """
+        Calculates total cost
+        (7) totalCost = sum(cost(i, j))
+        """
         total_cost = 0
         for task in self.get_tasks():
             total_cost += self._get_cost(task)
@@ -247,10 +269,10 @@ class TaskGraph(object):
             else:
                 task.processed = False
 
-    """
-    Calculate start & finish times
-    """
     def _calculate_st_ft(self, duplication_enabled=True):
+        """
+        Calculate start & finish times
+        """
         duplicated_task = None
 
         # Delete previous calculations
@@ -286,17 +308,17 @@ class TaskGraph(object):
 
         return duplicated_task
 
-    """
-    Visualise the graph.
-    """
     def draw_graph(self):
+        """
+        Visualise the graph.
+        """
         nx.draw_networkx(self._graph, with_labels=True)
         plt.show()
 
-    """
-    Visualise scheduled tasks
-    """
     def draw_schedule(self):
+        """
+        Visualise scheduled tasks
+        """
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
@@ -333,10 +355,10 @@ class TaskGraph(object):
         ax.autoscale_view(True, True, True)
         plt.show()
 
-    """
-    Print scheduled tasks
-    """
     def print_schedule(self):
+        """
+        Print scheduled tasks
+        """
         for processor in self._processors:
             tasks_str = ''
             for task in filter(lambda x: x.processor == processor, self.get_tasks()):
