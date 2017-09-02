@@ -28,6 +28,9 @@ or you can run different use case, eg.:
 $ python mlscheduler --usecase TaskGraphTestUseCase
 ```
 
+## Documentation
+https://docs.google.com/document/d/1lBDyZDCdKzHCiU_8dVA5i5CjWB9K9qG_kVSg863GKdU
+
 ## Useful links
 - Trello board (https://trello.com/b/WlySl9JH/bsc)  
 - Data flow (https://www.draw.io/#G0B8iyR5YUITZYQXRPRnc5OWtQQ3M)
