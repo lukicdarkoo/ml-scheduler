@@ -161,7 +161,7 @@ class TaskGraph(object):
 
         return finish_time
 
-    def get_total_time(self):
+    def _schedule_exit_task(self):
         """
         Calculates total time
         (4) totalTime = min{ ft(v_exit, p_j) }
@@ -187,7 +187,8 @@ class TaskGraph(object):
         exit_task.processor = min_processor
         exit_task.processed = True
 
-        return min_ft
+    def get_total_time(self):
+        return self._get_exit_task().ft
 
     def _get_vm_cost(self, processor):
         """
@@ -305,6 +306,8 @@ class TaskGraph(object):
                     if successors_of_successor not in successors_of_successors:
                         successors_of_successors.append(successors_of_successor)
             successors = self._sort_tasks(successors_of_successors)
+
+        self._schedule_exit_task()
 
         return duplicated_task
 

@@ -17,6 +17,10 @@ class GASchedulerTestUseCase(object):
 
         best_graph = ga_scheduler.calculate()
 
+        print('Total Time:', task_graph.get_total_time())
+        print('Total Cost:', task_graph.get_total_cost())
+
+        task_graph.print_schedule()
         best_graph.draw_schedule()
 
 
