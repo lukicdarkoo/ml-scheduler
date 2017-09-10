@@ -81,7 +81,7 @@ class GAScheduler(object):
 
     def calculate(self):
         # Make initial population
-        population = self.generate_initial_population(n_tasks=8)
+        population = self.generate_initial_population(n_tasks=(len(self._task_graph.get_tasks()) - 2))
         no_change_n = 0
         previous_total_cost = 0
 

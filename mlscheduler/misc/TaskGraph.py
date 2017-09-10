@@ -49,6 +49,32 @@ class TaskGraph(object):
     def get_etc(self, task, processor):
         return self._etc[task.index][processor.index]
 
+    def set_heft_schedule(self):
+        self.clear()
+
+        entry_task = self._get_entry_task()
+
+        successors = self._sort_tasks(self._graph.successors(entry_task))
+        entry_task.processor = self._processors[0]
+        entry_task.st = self._get_st(entry_task)
+        entry_task.ft = self._get_ft(entry_task)
+        entry_task.processed = True
+
+        while len(successors) > 0:
+            for successor in successors:
+                successor.processor = min(self._processors, key=lambda x: 0 if self._get_last_task(x) is None else self._get_last_task(x).ft)
+                successor.st = self._get_st(successor)
+                successor.ft = self._get_ft(successor)
+                successor.processed = True
+
+            # Find all successors level below
+            successors_of_successors = []
+            for successor in successors:
+                for successors_of_successor in self._graph.successors(successor):
+                    if successors_of_successor not in successors_of_successors:
+                        successors_of_successors.append(successors_of_successor)
+            successors = self._sort_tasks(successors_of_successors)
+
     def set_schedule(self, schedule):
         """
         Set task scheduling across processors.
@@ -62,6 +88,7 @@ class TaskGraph(object):
         first_processor_index = self._etc[0].index(min(self._etc[0]))
         first_processor = self._processors[first_processor_index]
         self.get_tasks()[0].processor = first_processor
+        self.get_tasks()[0].processed = True
 
         # Schedule other tasks
         task_index = 1
@@ -299,7 +326,7 @@ class TaskGraph(object):
                 successor.ft = self._get_ft(successor, False)
                 successor.processed = True
 
-            # Find all successors level above
+            # Find all successors level below
             successors_of_successors = []
             for successor in successors:
                 for successors_of_successor in self._graph.successors(successor):
