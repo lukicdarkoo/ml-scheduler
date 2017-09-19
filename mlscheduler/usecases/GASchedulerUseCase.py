@@ -22,8 +22,8 @@ class GASchedulerUseCase(object):
             task_graph = RandomImporter.get_task_graph(n_tasks=i)
 
             task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=w))
-            ga_scheduler = GAScheduler(task_graph=task_graph.copy(), nind=90, max_terminate=80, no_change_terminate=15, w=w)
-            ga_scheduler2 = GAScheduler(task_graph=task_graph.copy(), nind=10, max_terminate=8, no_change_terminate=3, w=w)
+            ga_scheduler = GAScheduler(task_graph=task_graph.copy(), nind=20, max_terminate=20, no_change_terminate=5, n_populations=1, w=w)
+            ga_scheduler2 = GAScheduler(task_graph=task_graph.copy(), nind=20, max_terminate=20, no_change_terminate=5, n_populations=5, w=w)
 
             ga2_graph = ga_scheduler2.calculate()
             ga_graph = ga_scheduler.calculate()

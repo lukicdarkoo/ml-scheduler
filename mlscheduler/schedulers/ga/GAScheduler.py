@@ -7,7 +7,7 @@ from schedulers.ga.Population import Population
 
 
 class GAScheduler(object):
-    def __init__(self, task_graph, nind=100, max_terminate=150, no_change_terminate=10, w=0.25, k1=0.6, k2=0.8, k3=0.1, k4=0.05):
+    def __init__(self, task_graph, nind=100, max_terminate=150, no_change_terminate=10, n_populations=5, w=0.25, k1=0.6, k2=0.8, k3=0.1, k4=0.05):
         self._nind = nind
         self._task_graph = task_graph
         self._no_change_terminate = no_change_terminate
@@ -17,6 +17,7 @@ class GAScheduler(object):
         self._k2 = k2
         self._k3 = k3
         self._k4 = k4
+        self._n_populations = n_populations
 
     def get_random_individual(self, population):
         temp_fitness_sum = 0
@@ -74,59 +75,72 @@ class GAScheduler(object):
     def print_fitness(population):
         print(list(map(lambda x: population.get_fitness(x), population.individuals)))
 
+    def _get_individual_with_max_fitness(self, population):
+        return max(population.individuals, key=lambda x: x.fitness)
+
     def _get_graph_with_max_fitness(self, population):
-        best_individual = max(population.individuals, key=lambda x: x.fitness)
+        best_individual = self._get_individual_with_max_fitness(population)
+        self._task_graph.set_schedule(best_individual.chromosome)
+        return self._task_graph.copy()
+
+    def _get_graph_with_max_fitness_mp(self, populations):
+        best_individual = None
+        for population in populations:
+            individual = self._get_individual_with_max_fitness(population)
+            if best_individual is None or individual.fitness > best_individual.fitness:
+                best_individual = individual
         self._task_graph.set_schedule(best_individual.chromosome)
         return self._task_graph.copy()
 
     def calculate(self):
+        finished_populations_indexes = []
+
         # Make initial population
-        population = self.generate_initial_population(n_tasks=(len(self._task_graph.get_tasks()) - 2))
-        no_change_n = 0
-        previous_total_cost = 0
+        populations = self._n_populations * [None]
+        for i in range(0, self._n_populations):
+            populations[i] = self.generate_initial_population(n_tasks=(len(self._task_graph.get_tasks()) - 2))
 
         for i in range(self._max_terminate):
-            # Generate new population
-            # Initial population for next generation is list of elite individuals (individuals with  greatest fitness)
-            population_new = self.selection_operation(population)
-            elite_population_num = len(population_new.individuals)
+            for pi in range(0, self._n_populations):
+                # Skip population if population already hit NO_CHANGE_TERMINATE
+                if pi in finished_populations_indexes:
+                    break
 
-            # Add additional individuals to make new generation of NIND individuals
-            for j in range(elite_population_num, self._nind):
-                individual = None
-                individual1 = self.get_random_individual(population)
-                individual2 = self.get_random_individual(population)
+                # Generate new population
+                # Initial population for next generation is list of elite individuals
+                # (individuals with greatest fitness)
+                population_new = self.selection_operation(populations[pi])
+                elite_population_num = len(population_new.individuals)
 
-                # Try to  apply crossover
-                crossover_individual = self.crossover_operation(population, individual1, individual2)
+                # Add additional individuals to make new generation of NIND individuals
+                for j in range(elite_population_num, self._nind):
+                    individual = None
+                    individual1 = self.get_random_individual(populations[pi])
+                    individual2 = self.get_random_individual(populations[pi])
 
-                if crossover_individual is None:
-                    individual = individual1
-                else:
-                    individual = crossover_individual
+                    # Try to apply crossover operation
+                    crossover_individual = self.crossover_operation(populations[pi], individual1, individual2)
+                    if crossover_individual is None:
+                        individual = individual1
+                    else:
+                        individual = crossover_individual
 
-                # Try to apply mutation
-                self.mutation_operation(population, individual)
-                population_new.append(individual)
+                    # Try to apply mutation operation
+                    self.mutation_operation(populations[pi], individual)
+                    population_new.append(individual)
 
-            population_new.calculate()
+                # Calculate sts and fts for a new population
+                population_new.calculate()
 
-            # Investigate break conditions
-            current_total_cost = population.individuals[0].total_cost
-            if abs(previous_total_cost - current_total_cost) < float_info.epsilon:
-                no_change_n += 1
+                # Investigate break conditions
+                current_total_cost = self._get_individual_with_max_fitness(populations[pi]).total_cost
+                new_total_cost = self._get_individual_with_max_fitness(population_new).total_cost
+                if abs(new_total_cost - current_total_cost) < float_info.epsilon:
+                    populations[pi].no_change_n += 1
+                    if populations[pi].no_change_n >= self._no_change_terminate:
+                        finished_populations_indexes.append(pi)
 
-            if no_change_n >= self._no_change_terminate:
-                return self._get_graph_with_max_fitness(population)
+                # Replace with a new population
+                populations[pi] = population_new
 
-            previous_total_cost = current_total_cost
-            population = population_new
-
-        return self._get_graph_with_max_fitness(population)
-
-
-
-
-
-
-
+        return self._get_graph_with_max_fitness_mp(populations)

@@ -15,7 +15,7 @@ class GASchedulerTestUseCase(object):
 
         task_graph = PredefinedImporter.get_task_graph()
         task_graph.set_task_duplicator(task_duplicator=TaskDuplicator(w=w))
-        ga_scheduler = GAScheduler(task_graph=task_graph, nind=15, max_terminate=50, no_change_terminate=8, w=w)
+        ga_scheduler = GAScheduler(task_graph=task_graph, nind=15, max_terminate=50, no_change_terminate=8, n_populations=1, w=w)
 
         best_graph = ga_scheduler.calculate()
 

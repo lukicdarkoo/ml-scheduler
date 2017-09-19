@@ -93,6 +93,9 @@ class TaskGraph(object):
         # Schedule other tasks
         task_index = 1
         for processor_number in schedule:
+            if task_index > len(self.get_tasks()) - 1:
+                break
+
             processor_index = processor_number - 1
             self.get_tasks()[task_index].processor = self._processors[processor_index]
             task_index += 1

@@ -22,6 +22,11 @@ class Population(object):
         self.f_max = None
         self.f_sum = None
 
+        self.finished = False
+
+        self.no_change_n = 0
+        self.total_cost = 0
+
         self.calculate()
 
     def append(self, individual):
