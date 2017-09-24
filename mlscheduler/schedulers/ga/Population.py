@@ -4,7 +4,21 @@ from schedulers.ga.Individual import Individual
 
 
 class Population(object):
+    """
+    Model of population in multi-population genetic algorithm
+    """
     def __init__(self, individuals, task_graph, w, k1, k2, k3, k4):
+        """
+        Constructs an instance of Population
+
+        :param individuals: Array of Individual that belongs to the population
+        :param task_graph: Graph of tasks
+        :param w: Optimisation variable (0 - 1), 0 aiming for a lower cost, 1 aiming for a lower time consumption
+        :param k1: First constant in crossover operation
+        :param k2: Second constant in crossover operation
+        :param k3: First constant in mutation operation
+        :param k4: Second constant in mutation operation
+        """
         self.individuals = individuals
         self._task_graph = task_graph
 
@@ -30,9 +44,18 @@ class Population(object):
         self.calculate()
 
     def append(self, individual):
+        """
+        Add an individual to the Population
+
+        :param individual: Individual to be added in population
+        """
         self.individuals.append(individual)
 
     def calculate(self):
+        """
+        Calculates `c_max`, `c_min`, `t_max`, `t_min`, `f_avg`, `f_max` & `f_sum` variables required to determine
+        fitness value of each individual
+        """
         if len(self.individuals) is 0:
             return
 
@@ -63,6 +86,9 @@ class Population(object):
         """
         Calculates a fitness of individual
         (10) F = w * ((T_max - T) / (T_max - T_min)) + (1 - w) * ((C_max - C) / (C_max - C_min))
+
+        :param individual: Individual that we want to calculate fitness for
+        :return Fitness value
         """
         if self._w == 1:
             return 1 / individual.total_time
