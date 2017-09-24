@@ -64,9 +64,15 @@ class Population(object):
         Calculates a fitness of individual
         (10) F = w * ((T_max - T) / (T_max - T_min)) + (1 - w) * ((C_max - C) / (C_max - C_min))
         """
-        if abs(self.t_max - self.t_min) < float_info.epsilon or \
-                abs(self.c_max - self.c_min) < float_info.epsilon:
-            return 1
+        if self._w == 1:
+            return 1 / individual.total_time
+
+        if self._w == 0:
+            return 1 / individual.total_cost
+
+        if abs(self.t_max - self.t_min) == 0 or \
+                abs(self.c_max - self.c_min) == 0:
+            return 1 + 1 / individual.total_cost
 
         return self._w * ((self.t_max - individual.total_time) / (self.t_max - self.t_min)) + \
             (1 - self._w) * ((self.c_max - individual.total_cost) / (self.c_max - self.c_min))
