@@ -31,7 +31,3 @@ $ python mlscheduler --usecase TaskGraphTestUseCase
 ## Documentation
 https://docs.google.com/document/d/1lBDyZDCdKzHCiU_8dVA5i5CjWB9K9qG_kVSg863GKdU  
 https://docs.google.com/presentation/d/1XqkCpNsSftQbfcoimNjP7wJtD96pN8vKnRqybkQqiH0
-
-## Useful links
-- Trello board (https://trello.com/b/WlySl9JH/bsc)  
-- Data flow (https://www.draw.io/#G0B8iyR5YUITZYQXRPRnc5OWtQQ3M)
